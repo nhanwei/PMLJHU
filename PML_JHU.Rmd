@@ -1,0 +1,73 @@
+---
+title: "Practical ML JHU"
+author: "Neo"
+date: "19 December 2014"
+output: html_document
+---
+
+# Executive Summary
+
+In this analysis, we have data collected from fitness monitering devices. We 
+want to quantify how well the participants are doing the exercises and that will
+be our different classes (or "classe" in our dataset). The dataset was obtained 
+from "http://groupware.les.inf.puc-rio.br/har". 
+
+# Data Preprocessing  
+
+We split our given dataset into training and validation sets and removed the 
+columns of index. 
+
+```{r}
+library(caret)
+library(randomForest)
+set.seed(1234)
+training <- read.csv("~/Downloads/pml-training.csv", header=TRUE, na.strings=c("NA","")) 
+training <- training[,-1]
+inTrain <- createDataPartition(y = training$classe, p = 0.6, list=FALSE)
+training <- training[inTrain,]
+validation <- training[-inTrain,]
+```
+
+Notice that the dataset has 159 columns with a lot of values being NAs. 
+In fact, out of 19622 rows and 169 columns of the original dataset(preprocessed)
+, 1921600 of 3139520 values were NAs. Thus we shall remove the columns with a lot
+of missing data.
+
+We shall keep columns that has >= 60% of data.
+```{r}
+main <- c((colSums(!is.na(training[,-ncol(training)])) >= 0.6*nrow(training)))
+training   <-  training[,main]
+validation <- validation[,main]
+```
+
+We are left with 59 columns.
+
+# Model Selection
+We shall use gradient boosting method because it is usually one of the better
+performing machine learning algorithms.
+
+```{r}
+model <- randomForest(classe~.,data=training)
+model <- randomForest(classe~.,data=training, method="gbm", verbose=FALSE)
+
+pred <- predict(model, validation)
+confusionMatrix(pred, validation$classe)
+```
+
+Seems that the accuracy is 100%.
+
+# Test Dataset
+
+First, we shall preprocess our test dataset the same way we processed our training.
+We coerce classes of our testing dataset into the same as our training dataset.
+
+```{r}
+testing <- read.csv("~/Downloads/pml-testing.csv", header=TRUE, na.strings=c("NA",""))
+testing <- testing[,-c(1,160)]
+testing <- testing[,main]
+
+testing <- rbind(training[2,-59], testing)
+predictions <- predict(model, testing[-1,])
+```
+
+
